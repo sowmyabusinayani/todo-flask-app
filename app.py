@@ -5,13 +5,21 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# Connect to PostgreSQL (update credentials before deploy)
+"""
+### Connect to PostgreSQL (update credentials before deploy)
 conn = psycopg2.connect(
     host=os.environ.get('DB_HOST', 'localhost'),
     database=os.environ.get('DB_NAME', 'task_db'),
     user=os.environ.get('DB_USER', 'postgres'),
     password=os.environ.get('DB_PASSWORD', 'postsql'),
     port=os.environ.get('DB_PORT', 5432)
+)###"""
+conn = psycopg2.connect(
+    host=os.environ.get("DB_HOST"),
+    port=os.environ.get("DB_PORT", 5432),
+    database=os.environ.get("DB_NAME"),
+    user=os.environ.get("DB_USER"),
+    password=os.environ.get("DB_PASSWORD")
 )
 
 def init_db():

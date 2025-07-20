@@ -1,24 +1,201 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>To-Do List</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do App</title>
+  <style>
+    .readonly {
+      background-color: #f0f0f0;
+      border: none;
+    }
+    input {
+      padding: 6px;
+      margin: 4px;
+    }
+    button {
+      padding: 6px 10px;
+      margin: 4px;
+      cursor: pointer;
+    }
+    .category-input, .task-input {
+      margin-left: 20px;
+    }
+    .timestamp {
+      font-size: 0.8em;
+      color: #888;
+      margin-left: 8px;
+    }
+  </style>
 </head>
 <body>
-    <h1>📝 To-Do List</h1>
-    <form action="/" method="POST">
-        <input type="text" name="content" placeholder="Enter a task..." required>
-        <button type="submit">Add Task</button>
-    </form>
+  <h1 style="text-align: center;">Hi...</h1>
+  <h2 style="text-align: center;">Users, I'm here to manage your tasks</h2>
+<div style="text-align: -webkit-center;">
+  <form method="POST" action="/add_user" onsubmit="return validateUserInput();">
+    <input id="name" name="name" placeholder="Enter username" oninput="toggleSubmit(this, 'addBtn')">
+    <button id="addBtn" type="submit" disabled style="text-shadow: 0 0 black;">Add</button>
+  </form>
+</div>
+  <ul>
+    {% for user in users %}
+    <li>
+      <form method="POST" action="/edit_user/{{ user.id }}" onsubmit="return confirmEdit('{{ user.id }}');">
+        <input id="input-{{ user.id }}" name="new_name" value="{{ user.name }}" class="readonly" readonly onkeydown="handleEnter(event, '{{ user.id }}')">
+        <span class="timestamp">{{ user.created_at }}</span>
+        <button type="button" onclick="enableEditing('{{ user.id }}')">✏️</button>
+        <button type="button" onclick="showCategoryInput('{{ user.id }}')">➕</button>
+        <button type="button" onclick="confirmDelete('/delete_user/{{ user.id }}')">❌</button>
+        <button type="submit" id="submit-{{ user.id }}" style="display:none">Save</button>
+      </form>
 
-    <ul>
-        {% for task in tasks %}
-        <li>
-            {{ task[1] }}
-            <a href="/delete/{{ task[0] }}">❌</a>
+      <div id="category-box-{{ user.id }}" class="category-input" style="display:none">
+        <form method="POST" action="/add_category/{{ user.id }}" onsubmit="return validateCategory('{{ user.id }}')">
+          <input type="text" id="cat-input-{{ user.id }}-new" name="category" placeholder="Add category" oninput="toggleSubmit(this, 'cat-submit-{{ user.id }}-new')">
+          <button type="submit" id="cat-submit-{{ user.id }}-new" disabled>Save</button>
+        </form>
+      </div>
+
+      <ul>
+        {% for cat in user.categories %}
+        <li class="category-input">
+          <form method="POST" action="/edit_category/{{ cat.id }}" onsubmit="return confirmEditCat('{{ cat.id }}');">
+            <input id="cat-input-{{ cat.id }}" name="new_name" value="{{ cat.name }}" class="readonly" readonly onkeydown="handleEnterCat(event, '{{ cat.id }}')">
+            <span class="timestamp">{{ cat.created_at }}</span>
+            <button type="button" onclick="enableEditingCat('{{ cat.id }}')">✏️</button>
+            <button type="button" onclick="showTaskInput('{{ cat.id }}')">➕</button>
+            <button type="button" onclick="confirmDelete('/delete_category/{{ cat.id }}')">❌</button>
+            <button type="submit" id="cat-save-{{ cat.id }}" style="display:none">Save</button>
+          </form>
+
+          <div id="task-box-{{ cat.id }}" class="task-input" style="display:none">
+            <form method="POST" action="/add_task/{{ cat.id }}" onsubmit="return validateTask('{{ cat.id }}')">
+              <input type="text" id="task-input-{{ cat.id }}-new" name="task" placeholder="Add task" oninput="toggleSubmit(this, 'task-submit-{{ cat.id }}-new')">
+              <button type="submit" id="task-submit-{{ cat.id }}-new" disabled>Save</button>
+            </form>
+          </div>
+
+          <ul>
+            {% for task in cat.tasks %}
+            <li class="task-input">
+              <form method="POST" action="/edit_task/{{ task.id }}" onsubmit="return confirmEditTask('{{ task.id }}');">
+                <input id="task-input-{{ task.id }}" name="new_name" value="{{ task.name }}" class="readonly" readonly onkeydown="handleEnterTask(event, '{{ task.id }}')">
+                <span class="timestamp">{{ task.created_at }}</span>
+                <button type="button" onclick="enableEditingTask('{{ task.id }}')">✏️</button>
+                <button type="button" onclick="confirmDelete('/delete_task/{{ task.id }}')">❌</button>
+                <button type="submit" id="task-save-{{ task.id }}" style="display:none">Save</button>
+              </form>
+            </li>
+            {% endfor %}
+          </ul>
+
         </li>
         {% endfor %}
-    </ul>
+      </ul>
+
+    </li>
+    {% endfor %}
+  </ul>
+
+  <script>
+    function toggleSubmit(input, btnId) {
+      document.getElementById(btnId).disabled = input.value.trim() === '';
+    }
+
+    function enableEditing(id) {
+      const input = document.getElementById('input-' + id);
+      input.removeAttribute('readonly');
+      input.classList.remove('readonly');
+      document.getElementById('submit-' + id).style.display = 'inline';
+      input.focus();
+    }
+
+    function handleEnter(event, id) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        document.getElementById('submit-' + id).click();
+      }
+    }
+
+    function confirmEdit(id) {
+      return document.getElementById('input-' + id).value.trim() !== '';
+    }
+
+    function validateUserInput() {
+      return document.getElementById('name').value.trim() !== '';
+    }
+
+    function showCategoryInput(userId) {
+      const box = document.getElementById('category-box-' + userId);
+      const input = document.getElementById('cat-input-' + userId + '-new');
+      const btn = document.getElementById('cat-submit-' + userId + '-new');
+      box.style.display = 'block';
+      input.value = '';
+      btn.disabled = true;
+      input.focus();
+    }
+
+    function validateCategory(userId) {
+      return document.getElementById('cat-input-' + userId + '-new').value.trim() !== '';
+    }
+
+    function enableEditingCat(catId) {
+      const input = document.getElementById('cat-input-' + catId);
+      input.removeAttribute('readonly');
+      input.classList.remove('readonly');
+      document.getElementById('cat-save-' + catId).style.display = 'inline';
+      input.focus();
+    }
+
+    function handleEnterCat(event, catId) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        document.getElementById('cat-save-' + catId).click();
+      }
+    }
+
+    function confirmEditCat(catId) {
+      return document.getElementById('cat-input-' + catId).value.trim() !== '';
+    }
+
+    function showTaskInput(catId) {
+      const box = document.getElementById('task-box-' + catId);
+      const input = document.getElementById('task-input-' + catId + '-new');
+      const btn = document.getElementById('task-submit-' + catId + '-new');
+      box.style.display = 'block';
+      input.value = '';
+      btn.disabled = true;
+      input.focus();
+    }
+
+    function validateTask(catId) {
+      return document.getElementById('task-input-' + catId + '-new').value.trim() !== '';
+    }
+
+    function enableEditingTask(taskId) {
+      const input = document.getElementById('task-input-' + taskId);
+      input.removeAttribute('readonly');
+      input.classList.remove('readonly');
+      document.getElementById('task-save-' + taskId).style.display = 'inline';
+      input.focus();
+    }
+
+    function handleEnterTask(event, taskId) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        document.getElementById('task-save-' + taskId).click();
+      }
+    }
+
+    function confirmEditTask(taskId) {
+      return document.getElementById('task-input-' + taskId).value.trim() !== '';
+    }
+
+    function confirmDelete(url) {
+      if (confirm("Are you sure you want to delete this item?")) {
+        window.location.href = url;
+      }
+    }
+  </script>
 </body>
 </html>
